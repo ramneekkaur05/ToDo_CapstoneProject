@@ -1,7 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { initDatabase, getAllTodos, createTodo, updateTodo, deleteTodo, markAllAsCompleted, deleteAllTodos, deleteCompletedTodos } from './sqlite.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -94,5 +100,20 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
+
+// Serve built client in production (or when `client/dist` exists).
+// This allows deploying only the `server` folder (single service) where
+// Express will serve the static frontend and the /api/* endpoints.
+const clientDist = path.join(__dirname, '..', '..', 'client', 'dist');
+if (fs.existsSync(clientDist)) {
+  // Serve static files
+  app.use(express.static(clientDist));
+
+  // SPA fallback — return index.html for non-API routes
+  app.get('/*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 
